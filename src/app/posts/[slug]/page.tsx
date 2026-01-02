@@ -6,6 +6,10 @@ import QuoteToShare from '@/components/QuoteToShare'
 import GiscusComments from '@/components/GiscusComments'
 import ShareToTwitter from '@/components/ShareToTwitter'
 
+// Force dynamic rendering to ensure fresh data
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 interface Post {
     id: string
     title: string
@@ -18,16 +22,51 @@ interface Post {
 
 async function getPost(slug: string): Promise<Post | null> {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/posts/${slug}`, {
-            cache: 'no-store'
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL
+            ? `https://${process.env.VERCEL_URL}`
+            : 'http://localhost:3000'
+
+        const res = await fetch(`${baseUrl}/api/posts/${slug}`, {
+            cache: 'no-store',
+            next: { revalidate: 0 }
         })
+
         if (res.ok) {
             return await res.json()
         }
+
+        console.error(`Failed to fetch post ${slug}: ${res.status} ${res.statusText}`)
         return null
     } catch (error) {
         console.error('Failed to fetch post:', error)
         return null
+    }
+}
+
+// Generate static params for all posts at build time
+export async function generateStaticParams() {
+    try {
+        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL
+            ? `https://${process.env.VERCEL_URL}`
+            : 'http://localhost:3000'
+
+        const res = await fetch(`${baseUrl}/api/posts`, {
+            cache: 'no-store'
+        })
+
+        if (!res.ok) {
+            console.error('Failed to fetch posts for static params')
+            return []
+        }
+
+        const posts: Post[] = await res.json()
+
+        return posts.map((post) => ({
+            slug: post.slug || post.id,
+        }))
+    } catch (error) {
+        console.error('Error generating static params:', error)
+        return []
     }
 }
 

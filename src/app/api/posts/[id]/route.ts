@@ -8,6 +8,8 @@ export async function GET(
   try {
     const { id } = await params
 
+    console.log(`[API] Fetching post with id/slug: ${id}`)
+
     // Try to find by id first
     let post = await db.post.findUnique({
       id: id
@@ -15,23 +17,26 @@ export async function GET(
 
     // If not found by id, try by slug
     if (!post) {
+      console.log(`[API] Post not found by id, trying slug: ${id}`)
       post = await db.post.findUnique({
         slug: id
       })
     }
 
     if (!post) {
+      console.error(`[API] Post not found: ${id}`)
       return NextResponse.json(
-        { error: 'Post not found' },
+        { error: 'Post not found', slug: id },
         { status: 404 }
       )
     }
 
+    console.log(`[API] Successfully found post: ${post.title}`)
     return NextResponse.json(post)
   } catch (error) {
-    console.error('Error fetching post:', error)
+    console.error('[API] Error fetching post:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch post' },
+      { error: 'Failed to fetch post', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     )
   }
