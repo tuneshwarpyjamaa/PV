@@ -76,10 +76,16 @@ export default function Home() {
   const fetchPosts = async () => {
     try {
       const res = await fetch('/api/posts')
-      const data = await res.json()
-      setPosts(data)
+      if (res.ok) {
+        const data = await res.json()
+        setPosts(data)
+      } else {
+        console.error('Failed to fetch posts')
+        setPosts([])
+      }
     } catch (error) {
       console.error('Failed to fetch posts:', error)
+      setPosts([])
     } finally {
       setLoading(false)
     }
