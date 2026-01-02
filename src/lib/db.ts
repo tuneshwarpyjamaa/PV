@@ -1,10 +1,5 @@
-import Database from 'better-sqlite3'
-import path from 'path'
+import { sql } from '@vercel/postgres'
 import { v4 as uuidv4 } from 'uuid'
-
-// Initialize SQLite database
-const dbPath = path.join(process.cwd(), 'db', 'local.db')
-const db = new Database(dbPath)
 
 // Helper functions to transform database rows
 const transformUser = (row: any) => {
@@ -31,55 +26,33 @@ const transformPost = (row: any) => {
   }
 }
 
-// Create tables if they don't exist
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY,
-    email TEXT UNIQUE NOT NULL,
-    name TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS posts (
-    id TEXT PRIMARY KEY,
-    title TEXT NOT NULL,
-    excerpt TEXT NOT NULL,
-    content TEXT NOT NULL,
-    category TEXT DEFAULT 'Politics',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-`)
-
 // User operations
 export const userDb = {
-  findMany: () => {
-    const rows = db.prepare('SELECT * FROM users ORDER BY created_at DESC').all()
+  findMany: async () => {
+    const { rows } = await sql`SELECT * FROM users ORDER BY created_at DESC`
     return rows.map(transformUser)
   },
 
-  findUnique: (where: { id?: string; email?: string }) => {
+  findUnique: async (where: { id?: string; email?: string }) => {
     if (where.id) {
-      const row = db.prepare('SELECT * FROM users WHERE id = ?').get(where.id)
-      return transformUser(row)
+      const { rows } = await sql`SELECT * FROM users WHERE id = ${where.id}`
+      return transformUser(rows[0])
     }
     if (where.email) {
-      const row = db.prepare('SELECT * FROM users WHERE email = ?').get(where.email)
-      return transformUser(row)
+      const { rows } = await sql`SELECT * FROM users WHERE email = ${where.email}`
+      return transformUser(rows[0])
     }
     return null
   },
 
-  create: (data: { email: string; name?: string }) => {
+  create: async (data: { email: string; name?: string }) => {
     const id = uuidv4()
-    const stmt = db.prepare('INSERT INTO users (id, email, name) VALUES (?, ?, ?)')
-    stmt.run(id, data.email, data.name || null)
-    const row = db.prepare('SELECT * FROM users WHERE id = ?').get(id)
-    return transformUser(row)
+    await sql`INSERT INTO users (id, email, name) VALUES (${id}, ${data.email}, ${data.name || null})`
+    const { rows } = await sql`SELECT * FROM users WHERE id = ${id}`
+    return transformUser(rows[0])
   },
 
-  update: (where: { id: string }, data: { email?: string; name?: string }) => {
+  update: async (where: { id: string }, data: { email?: string; name?: string }) => {
     const updates: string[] = []
     const values: any[] = []
 
@@ -95,74 +68,87 @@ export const userDb = {
     updates.push('updated_at = CURRENT_TIMESTAMP')
     values.push(where.id)
 
-    const stmt = db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE id = ?`)
-    stmt.run(...values)
-    const row = db.prepare('SELECT * FROM users WHERE id = ?').get(where.id)
-    return transformUser(row)
+    // For Postgres, use dynamic query
+    let query = 'UPDATE users SET '
+    const setParts: string[] = []
+    const params: any[] = []
+
+    if (data.email !== undefined) {
+      setParts.push('email = ?')
+      params.push(data.email)
+    }
+    if (data.name !== undefined) {
+      setParts.push('name = ?')
+      params.push(data.name)
+    }
+    setParts.push('updated_at = CURRENT_TIMESTAMP')
+
+    query += setParts.join(', ') + ' WHERE id = ?'
+    params.push(where.id)
+
+    await sql.unsafe(query, params)
+    const { rows } = await sql`SELECT * FROM users WHERE id = ${where.id}`
+    return transformUser(rows[0])
   },
 
-  delete: (where: { id: string }) => {
-    const stmt = db.prepare('DELETE FROM users WHERE id = ?')
-    stmt.run(where.id)
+  delete: async (where: { id: string }) => {
+    await sql`DELETE FROM users WHERE id = ${where.id}`
     return { id: where.id }
   }
 }
 
 // Post operations
 export const postDb = {
-  findMany: (options?: { orderBy?: { createdAt?: 'asc' | 'desc' } }) => {
+  findMany: async (options?: { orderBy?: { createdAt?: 'asc' | 'desc' } }) => {
     const order = options?.orderBy?.createdAt === 'asc' ? 'ASC' : 'DESC'
-    const rows = db.prepare(`SELECT * FROM posts ORDER BY created_at ${order}`).all()
+    const { rows } = await sql`SELECT * FROM posts ORDER BY created_at ${order}`
     return rows.map(transformPost)
   },
 
-  findUnique: (where: { id: string }) => {
-    const row = db.prepare('SELECT * FROM posts WHERE id = ?').get(where.id)
-    return transformPost(row)
+  findUnique: async (where: { id: string }) => {
+    const { rows } = await sql`SELECT * FROM posts WHERE id = ${where.id}`
+    return transformPost(rows[0])
   },
 
-  create: (data: { title: string; excerpt: string; content: string; category?: string }) => {
+  create: async (data: { title: string; excerpt: string; content: string; category?: string }) => {
     const id = uuidv4()
     const category = data.category || 'Politics'
-    const stmt = db.prepare('INSERT INTO posts (id, title, excerpt, content, category) VALUES (?, ?, ?, ?, ?)')
-    stmt.run(id, data.title, data.excerpt, data.content, category)
-    const row = db.prepare('SELECT * FROM posts WHERE id = ?').get(id)
-    return transformPost(row)
+    await sql`INSERT INTO posts (id, title, excerpt, content, category) VALUES (${id}, ${data.title}, ${data.excerpt}, ${data.content}, ${category})`
+    const { rows } = await sql`SELECT * FROM posts WHERE id = ${id}`
+    return transformPost(rows[0])
   },
 
-  update: (where: { id: string }, data: { title?: string; excerpt?: string; content?: string; category?: string }) => {
-    const updates: string[] = []
-    const values: any[] = []
+  update: async (where: { id: string }, data: { title?: string; excerpt?: string; content?: string; category?: string }) => {
+    const setParts: string[] = []
+    const params: any[] = []
 
     if (data.title !== undefined) {
-      updates.push('title = ?')
-      values.push(data.title)
+      setParts.push('title = ?')
+      params.push(data.title)
     }
     if (data.excerpt !== undefined) {
-      updates.push('excerpt = ?')
-      values.push(data.excerpt)
+      setParts.push('excerpt = ?')
+      params.push(data.excerpt)
     }
     if (data.content !== undefined) {
-      updates.push('content = ?')
-      values.push(data.content)
+      setParts.push('content = ?')
+      params.push(data.content)
     }
     if (data.category !== undefined) {
-      updates.push('category = ?')
-      values.push(data.category)
+      setParts.push('category = ?')
+      params.push(data.category)
     }
+    setParts.push('updated_at = CURRENT_TIMESTAMP')
+    params.push(where.id)
 
-    updates.push('updated_at = CURRENT_TIMESTAMP')
-    values.push(where.id)
-
-    const stmt = db.prepare(`UPDATE posts SET ${updates.join(', ')} WHERE id = ?`)
-    stmt.run(...values)
-    const row = db.prepare('SELECT * FROM posts WHERE id = ?').get(where.id)
-    return transformPost(row)
+    const query = `UPDATE posts SET ${setParts.join(', ')} WHERE id = ?`
+    await sql.unsafe(query, params)
+    const { rows } = await sql`SELECT * FROM posts WHERE id = ${where.id}`
+    return transformPost(rows[0])
   },
 
-  delete: (where: { id: string }) => {
-    const stmt = db.prepare('DELETE FROM posts WHERE id = ?')
-    stmt.run(where.id)
+  delete: async (where: { id: string }) => {
+    await sql`DELETE FROM posts WHERE id = ${where.id}`
     return { id: where.id }
   }
 }

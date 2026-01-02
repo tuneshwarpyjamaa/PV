@@ -1,0 +1,10 @@
+{
+    "functions": {
+        "src/app/api/**/*.ts": {
+            "runtime": "@vercel/bun"
+        },
+        "src/app/api/**/*.tsx": {
+            "runtime": "@vercel/bun"
+        }
+    }
+}
