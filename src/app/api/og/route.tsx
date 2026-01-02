@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         return new ImageResponse(
             (
                 <div
-          style= {{
+                    style= {{
             height: '100%',
             width: '100%',
             display: 'flex',
@@ -28,7 +28,7 @@ export async function GET(request: NextRequest) {
             padding: '80px',
             fontFamily: 'system-ui, sans-serif',
         }}
-        >
+                >
         {/* Gradient Background */ }
         < div
     style = {{
@@ -38,30 +38,30 @@ export async function GET(request: NextRequest) {
                     right: 0,
                         bottom: 0,
                             background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(147, 51, 234, 0.1) 50%, rgba(236, 72, 153, 0.1) 100%)',
-            }
+                        }
 }
-          />
+                    />
 
 {/* Header */ }
 <div style={ { display: 'flex', alignItems: 'center', gap: '16px', zIndex: 1 } }>
     <div
-              style={
+                            style={
     {
         fontSize: '32px',
             fontWeight: 'bold',
                 color: '#fff',
                     letterSpacing: '-0.02em',
-              }
+                            }
 }
-            >
+                        >
     Views
     </div>
     < div
 style = {{
     fontSize: '16px',
         color: '#6b7280',
-              }}
-            >
+                            }}
+                        >
     by Amish B Harsoor
         </div>
         </div>
@@ -79,14 +79,14 @@ style = {{
                         fontSize: '18px',
                             fontWeight: '500',
                                 width: 'fit-content',
-              }}
-            >
+                            }}
+                        >
     { category }
     </div>
 
 {/* Title */ }
 <div
-              style={
+                            style={
     {
         fontSize: '64px',
             fontWeight: 'bold',
@@ -97,16 +97,16 @@ style = {{
                                 WebkitLineClamp: 3,
                                     WebkitBoxOrient: 'vertical',
                                         overflow: 'hidden',
-              }
+                            }
 }
-            >
+                        >
     { title }
     </div>
     </div>
 
 {/* Footer */ }
 <div
-            style={
+                        style={
     {
         display: 'flex',
             alignItems: 'center',
@@ -114,15 +114,15 @@ style = {{
                     zIndex: 1,
                         color: '#6b7280',
                             fontSize: '20px',
-            }
+                        }
 }
-          >
+                    >
     <div>{ date } </div>
     <div>•</div>
         < div > views.amish.dev </div>
         </div>
         </div>
-      ),
+            ),
 {
     width: 1200,
         height: 630,
