@@ -15,6 +15,7 @@ interface Post {
   excerpt: string
   content: string
   category: string
+  slug?: string
   createdAt: string
 }
 
@@ -32,7 +33,6 @@ const SkeletonCard = () => (
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedPost, setSelectedPost] = useState<Post | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState<string>('All')
   const [searchQuery, setSearchQuery] = useState('')
@@ -100,10 +100,6 @@ export default function Home() {
     return matchesCategory && matchesSearch
   })
 
-  const handleBack = () => {
-    setSelectedPost(null)
-  }
-
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -111,6 +107,14 @@ export default function Home() {
   const calculateReadTime = (content: string) => {
     const wordCount = content.split(/\s+/).length
     return Math.ceil(wordCount / 200)
+  }
+
+  const addIdsToHeadings = (html: string) => {
+    let headingIndex = 0
+    return html.replace(/<h([1-3])([^>]*)>(.*?)<\/h[1-3]>/gi, (match, level, attrs, content) => {
+      const id = `heading-${headingIndex++}`
+      return `<h${level}${attrs} id="${id}">${content}</h${level}>`
+    })
   }
 
   const handleAdminLogin = (e: React.FormEvent) => {
@@ -168,242 +172,9 @@ export default function Home() {
   }
 
 
-  if (selectedPost) {
-    // Get other posts for "More from Author" section
-    const otherPosts = posts.filter(p => p.id !== selectedPost.id).slice(0, 3)
-
-    // Calculate estimated reading time (assuming 200 words per minute)
-    const wordCount = selectedPost.content.split(/\s+/).length
-    const readingTime = Math.ceil(wordCount / 200)
-
-    return (
-      <div className="min-h-screen flex flex-col bg-black">
-        <QuoteToShare />
-
-        <header className="border-b border-gray-800 bg-black sticky top-0 z-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between h-16">
-              <button
-                onClick={handleBack}
-                className="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                Back
-              </button>
-              <div>
-                <h1 className="text-white text-xl font-semibold tracking-tight">
-                  Views
-                </h1>
-              </div>
-              <div className="w-16"></div>
-            </div>
-          </div>
-        </header>
-
-        <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-            {/* Main Content */}
-            <div className="lg:col-span-8">
-              <article className="text-white">
-                <header className="mb-12">
-                  <h1 className="text-4xl md:text-5xl font-bold leading-tight mb-6 text-white font-[family-name:var(--font-playfair)]">
-                    {selectedPost.title}
-                  </h1>
-                  <p className="text-xl text-gray-400 leading-relaxed mb-8">
-                    {selectedPost.excerpt}
-                  </p>
-
-                  {/* Author Info Bar */}
-                  <div className="flex items-center justify-between py-6 border-y border-gray-800">
-                    <div className="flex items-center gap-4">
-                      <Image
-                        src="/my_dp.jpg"
-                        alt="Amish B Harsoor"
-                        width={48}
-                        height={48}
-                        className="w-12 h-12 rounded-full object-cover"
-                      />
-                      <div>
-                        <p className="text-white font-medium">Amish B Harsoor</p>
-                        <div className="flex items-center gap-3 text-sm text-gray-500">
-                          <span>{new Date(selectedPost.createdAt).toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'short',
-                            day: 'numeric'
-                          })}</span>
-                          <span>•</span>
-                          <span>{readingTime} min read</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="hidden md:flex items-center gap-1">
-                      <button className="p-2 hover:bg-gray-800 rounded-full transition-colors" title="Bookmark">
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                        </svg>
-                      </button>
-                      <ShareToTwitter
-                        title={selectedPost.title}
-                        excerpt={selectedPost.excerpt}
-                        category={selectedPost.category}
-                        date={new Date(selectedPost.createdAt).toLocaleDateString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric'
-                        })}
-                        compact={true}
-                      />
-                    </div>
-                  </div>
-                </header>
-
-                {/* Article Content */}
-                <div className="prose prose-invert prose-lg max-w-none">
-                  <div className="text-gray-300 leading-relaxed whitespace-pre-wrap text-lg" style={{ lineHeight: '1.8' }}>
-                    {selectedPost.content}
-                  </div>
-                </div>
-
-                {/* Article Footer */}
-                <div className="mt-16 pt-8 border-t border-gray-800">
-                  <div className="flex items-center gap-2 mb-8">
-                    <button className="px-4 py-2 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full text-sm transition-colors">
-                      {selectedPost.category}
-                    </button>
-                  </div>
-                </div>
-
-                {/* Giscus Comments - Replace with your actual repo details */}
-                <GiscusComments
-                  repo="yourusername/yourrepo"
-                  repoId="YOUR_REPO_ID"
-                  category="General"
-                  categoryId="YOUR_CATEGORY_ID"
-                />
-              </article>
-            </div>
-
-            {/* Sidebar with Table of Contents */}
-            <aside className="lg:col-span-4">
-              <div className="lg:sticky lg:top-24 space-y-8">
-                {/* Table of Contents */}
-                <TableOfContents content={selectedPost.content} />
-
-                {/* Author Card */}
-                <div className="border border-gray-800 p-6 rounded-lg">
-                  <div className="flex items-center gap-4 mb-4">
-                    <Image
-                      src="/my_dp.jpg"
-                      alt="Amish B Harsoor"
-                      width={64}
-                      height={64}
-                      className="w-16 h-16 rounded-full object-cover"
-                    />
-                    <div>
-                      <h3 className="text-white font-semibold text-lg">Amish B Harsoor</h3>
-                      <p className="text-gray-500 text-sm">Author</p>
-                    </div>
-                  </div>
-                  <p className="text-gray-400 text-sm leading-relaxed mb-4">
-                    Sharing my thoughts on Indian politics and technology. All views are personal.
-                  </p>
-                  <button className="w-full bg-white text-black py-2 px-4 rounded font-medium hover:bg-gray-200 transition-colors text-sm">
-                    Follow
-                  </button>
-                </div>
-
-                {/* More from Author */}
-                {otherPosts.length > 0 && (
-                  <div className="border border-gray-800 p-6 rounded-lg">
-                    <h3 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">
-                      More from Amish B Harsoor
-                    </h3>
-                    <div className="space-y-6">
-                      {otherPosts.map((post) => (
-                        <article
-                          key={post.id}
-                          onClick={() => setSelectedPost(post)}
-                          className="cursor-pointer group"
-                        >
-                          <h4 className="text-white font-medium mb-2 group-hover:text-gray-300 transition-colors line-clamp-2 text-sm">
-                            {post.title}
-                          </h4>
-                          <p className="text-gray-500 text-xs line-clamp-2 mb-2">
-                            {post.excerpt}
-                          </p>
-                          <p className="text-gray-600 text-xs">
-                            {new Date(post.createdAt).toLocaleDateString('en-US', {
-                              month: 'short',
-                              day: 'numeric'
-                            })}
-                          </p>
-                        </article>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Recommended Topics */}
-                <div className="border border-gray-800 p-6 rounded-lg">
-                  <h3 className="text-white font-semibold mb-4 text-sm uppercase tracking-wider">
-                    Recommended Topics
-                  </h3>
-                  <div className="flex flex-wrap gap-2">
-                    <button className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full text-xs transition-colors">
-                      Politics
-                    </button>
-                    <button className="px-3 py-1.5 bg-gray-800 hover:bg-gray-700 text-gray-300 rounded-full text-xs transition-colors">
-                      Tech
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </aside>
-          </div>
-        </main>
-
-        <footer className="border-t border-gray-800 py-8 bg-black mt-16">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="text-center mb-6">
-              <p className="text-gray-600 text-sm mb-2">
-                © {new Date().getFullYear()} Views by Amish B Harsoor. All rights reserved.
-              </p>
-              <div className="flex items-center justify-center gap-2 text-xs text-gray-700">
-                <span>Built with</span>
-                <span className="flex items-center gap-1.5">
-                  <span className="text-gray-500">Next.js</span>
-                  <span>+</span>
-                  <span className="text-gray-500">TypeScript</span>
-                  <span>+</span>
-                  <span className="text-gray-500">Tailwind CSS</span>
-                  <span>+</span>
-                  <span className="text-gray-500">SQLite</span>
-                  <span>+</span>
-                  <span className="text-gray-500">☕ Coffee</span>
-                </span>
-              </div>
-            </div>
-            <div className="text-center">
-              <Link
-                href="/now"
-                className="text-gray-600 hover:text-white transition-colors text-sm underline"
-              >
-                What I'm doing now
-              </Link>
-            </div>
-          </div>
-        </footer>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-black">
-      <CommandPalette posts={posts} onSelectPost={setSelectedPost} />
+      <CommandPalette posts={posts} />
 
       <header className="border-b border-gray-800 bg-black sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -536,39 +307,41 @@ export default function Home() {
                   {filteredPosts.length > 0 && (
                     <div className="space-y-6">
                       {filteredPosts.map((post) => (
-                        <article
+                        <Link
                           key={post.id}
-                          className="cursor-pointer group bg-[#0a0a0a] hover:bg-[#111111] transition-all duration-300 p-8 hover:-translate-y-0.5 border-l-2 border-transparent hover:border-gray-700"
-                          onClick={() => setSelectedPost(post)}
+                          href={`/posts/${post.slug || post.id}`}
+                          className="block"
                         >
-                          <div className="flex items-center gap-2 mb-4">
-                            <span className="px-3 py-1 bg-gray-800/50 text-gray-400 rounded-full text-xs font-medium uppercase tracking-wider">
-                              {post.category}
-                            </span>
-                          </div>
-                          <h3 className="text-white text-2xl md:text-3xl font-bold mb-3 leading-tight group-hover:text-gray-200 transition-colors font-[family-name:var(--font-playfair)]">
-                            {post.title}
-                          </h3>
-                          <p className="text-gray-400 text-base leading-relaxed mb-4 line-clamp-2">
-                            {post.excerpt}
-                          </p>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2 text-sm text-gray-500">
-                              <span>{new Date(post.createdAt).toLocaleDateString('en-US', {
-                                month: 'short',
-                                day: 'numeric'
-                              })}</span>
-                              <span>•</span>
-                              <span>{calculateReadTime(post.content)} min read</span>
+                          <article className="cursor-pointer group bg-[#0a0a0a] hover:bg-[#111111] transition-all duration-300 p-8 hover:-translate-y-0.5 border-l-2 border-transparent hover:border-gray-700">
+                            <div className="flex items-center gap-2 mb-4">
+                              <span className="px-3 py-1 bg-gray-800/50 text-gray-400 rounded-full text-xs font-medium uppercase tracking-wider">
+                                {post.category}
+                              </span>
                             </div>
-                            <span className="text-gray-600 group-hover:text-gray-400 transition-colors text-sm flex items-center gap-1">
-                              Read more
-                              <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                              </svg>
-                            </span>
-                          </div>
-                        </article>
+                            <h3 className="text-white text-2xl md:text-3xl font-bold mb-3 leading-tight group-hover:text-gray-200 transition-colors font-[family-name:var(--font-playfair)]">
+                              {post.title}
+                            </h3>
+                            <p className="text-gray-400 text-base leading-relaxed mb-4 line-clamp-2">
+                              {post.excerpt}
+                            </p>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-sm text-gray-500">
+                                <span>{new Date(post.createdAt).toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}</span>
+                                <span>•</span>
+                                <span>{calculateReadTime(post.content)} min read</span>
+                              </div>
+                              <span className="text-gray-600 group-hover:text-gray-400 transition-colors text-sm flex items-center gap-1">
+                                Read more
+                                <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                              </span>
+                            </div>
+                          </article>
+                        </Link>
                       ))}
                     </div>
                   )}
@@ -586,12 +359,8 @@ export default function Home() {
                     <ul className="space-y-4">
                       {posts.slice(0, 5).map((post) => (
                         <li key={post.id}>
-                          <a
-                            href="#"
-                            onClick={(e) => {
-                              e.preventDefault()
-                              setSelectedPost(post)
-                            }}
+                          <Link
+                            href={`/posts/${post.slug || post.id}`}
                             className="group block"
                           >
                             <p className="text-white text-sm font-medium mb-1 group-hover:text-gray-300 transition-colors line-clamp-2">
@@ -604,7 +373,7 @@ export default function Home() {
                                 day: 'numeric'
                               })}
                             </p>
-                          </a>
+                          </Link>
                         </li>
                       ))}
                     </ul>

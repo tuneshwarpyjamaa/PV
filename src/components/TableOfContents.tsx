@@ -17,19 +17,17 @@ export default function TableOfContents({ content }: TableOfContentsProps) {
     const [activeId, setActiveId] = useState<string>('')
 
     useEffect(() => {
-        // Parse headings from content (assuming markdown-style headings)
-        const lines = content.split('\n')
+        // Parse headings from HTML content
         const parsedHeadings: Heading[] = []
+        const regex = /\u003ch([1-3])\s+id="([^"]+)"\u003e(.*?)\u003c\/h[1-3]\u003e/gi
+        let match
 
-        lines.forEach((line, index) => {
-            const match = line.match(/^(#{1,3})\s+(.+)/)
-            if (match) {
-                const level = match[1].length
-                const text = match[2]
-                const id = `heading-${index}`
-                parsedHeadings.push({ id, text, level })
-            }
-        })
+        while ((match = regex.exec(content)) !== null) {
+            const level = parseInt(match[1])
+            const id = match[2]
+            const text = match[3].replace(/\u003c[^>]*\u003e/g, '') // Remove any nested tags
+            parsedHeadings.push({ id, text, level })
+        }
 
         setHeadings(parsedHeadings)
     }, [content])
@@ -70,8 +68,8 @@ export default function TableOfContents({ content }: TableOfContentsProps) {
                         <a
                             href={`#${heading.id}`}
                             className={`text-sm transition-colors block py-1 border-l-2 pl-3 ${activeId === heading.id
-                                    ? 'border-white text-white font-medium'
-                                    : 'border-gray-800 text-gray-500 hover:text-gray-300 hover:border-gray-600'
+                                ? 'border-white text-white font-medium'
+                                : 'border-gray-800 text-gray-500 hover:text-gray-300 hover:border-gray-600'
                                 }`}
                             onClick={(e) => {
                                 e.preventDefault()

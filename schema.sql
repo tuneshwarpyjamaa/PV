@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS posts (
     excerpt TEXT NOT NULL,
     content TEXT NOT NULL,
     category TEXT CHECK (category IN ('Tech', 'Politics')) DEFAULT 'Politics',
+    slug TEXT UNIQUE NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );

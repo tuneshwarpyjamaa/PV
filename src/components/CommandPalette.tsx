@@ -9,15 +9,15 @@ interface Post {
     excerpt: string
     category: string
     content: string
+    slug?: string
     createdAt: string
 }
 
 interface CommandPaletteProps {
     posts: Post[]
-    onSelectPost: Dispatch<SetStateAction<Post | null>>
 }
 
-export default function CommandPalette({ posts, onSelectPost }: CommandPaletteProps) {
+export default function CommandPalette({ posts }: CommandPaletteProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [search, setSearch] = useState('')
     const [selectedIndex, setSelectedIndex] = useState(0)
@@ -72,7 +72,7 @@ export default function CommandPalette({ posts, onSelectPost }: CommandPalettePr
             if (item.type === 'command') {
                 item.action()
             } else {
-                onSelectPost(item)
+                router.push(`/posts/${item.slug || item.id}`)
             }
             setIsOpen(false)
             setSearch('')
@@ -116,7 +116,7 @@ export default function CommandPalette({ posts, onSelectPost }: CommandPalettePr
                                         if (item.type === 'command') {
                                             item.action()
                                         } else {
-                                            onSelectPost(item)
+                                            router.push(`/posts/${item.slug || item.id}`)
                                         }
                                         setIsOpen(false)
                                         setSearch('')

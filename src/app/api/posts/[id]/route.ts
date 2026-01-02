@@ -3,14 +3,22 @@ import { db } from '@/lib/db'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const post = await db.post.findUnique({
-      where: {
-        id: params.id
-      }
+    const { id } = await params
+
+    // Try to find by id first
+    let post = await db.post.findUnique({
+      id: id
     })
+
+    // If not found by id, try by slug
+    if (!post) {
+      post = await db.post.findUnique({
+        slug: id
+      })
+    }
 
     if (!post) {
       return NextResponse.json(
@@ -31,9 +39,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const body = await request.json()
     const { title, excerpt, content } = body
 
@@ -44,16 +53,16 @@ export async function PUT(
       )
     }
 
-    const post = await db.post.update({
-      where: {
-        id: params.id
+    const post = await db.post.update(
+      {
+        id: id
       },
-      data: {
+      {
         title,
         excerpt,
         content
       }
-    })
+    )
 
     return NextResponse.json(post)
   } catch (error) {
@@ -67,13 +76,13 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
+
     await db.post.delete({
-      where: {
-        id: params.id
-      }
+      id: id
     })
 
     return NextResponse.json({ success: true })

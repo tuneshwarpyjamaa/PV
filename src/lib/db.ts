@@ -1,5 +1,9 @@
-import { sql } from '@vercel/postgres'
+import { Pool } from 'pg'
 import { v4 as uuidv4 } from 'uuid'
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+})
 
 // Helper functions to transform database rows
 const transformUser = (row: any) => {
@@ -21,6 +25,7 @@ const transformPost = (row: any) => {
     excerpt: row.excerpt,
     content: row.content,
     category: row.category,
+    slug: row.slug,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   }
@@ -29,17 +34,17 @@ const transformPost = (row: any) => {
 // User operations
 export const userDb = {
   findMany: async () => {
-    const { rows } = await sql`SELECT * FROM users ORDER BY created_at DESC`
+    const { rows } = await pool.query('SELECT * FROM users ORDER BY created_at DESC')
     return rows.map(transformUser)
   },
 
   findUnique: async (where: { id?: string; email?: string }) => {
     if (where.id) {
-      const { rows } = await sql`SELECT * FROM users WHERE id = ${where.id}`
+      const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [where.id])
       return transformUser(rows[0])
     }
     if (where.email) {
-      const { rows } = await sql`SELECT * FROM users WHERE email = ${where.email}`
+      const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [where.email])
       return transformUser(rows[0])
     }
     return null
@@ -47,52 +52,35 @@ export const userDb = {
 
   create: async (data: { email: string; name?: string }) => {
     const id = uuidv4()
-    await sql`INSERT INTO users (id, email, name) VALUES (${id}, ${data.email}, ${data.name || null})`
-    const { rows } = await sql`SELECT * FROM users WHERE id = ${id}`
+    await pool.query('INSERT INTO users (id, email, name) VALUES ($1, $2, $3)', [id, data.email, data.name || null])
+    const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [id])
     return transformUser(rows[0])
   },
 
   update: async (where: { id: string }, data: { email?: string; name?: string }) => {
-    const updates: string[] = []
-    const values: any[] = []
-
-    if (data.email !== undefined) {
-      updates.push('email = ?')
-      values.push(data.email)
-    }
-    if (data.name !== undefined) {
-      updates.push('name = ?')
-      values.push(data.name)
-    }
-
-    updates.push('updated_at = CURRENT_TIMESTAMP')
-    values.push(where.id)
-
-    // For Postgres, use dynamic query
-    let query = 'UPDATE users SET '
     const setParts: string[] = []
     const params: any[] = []
+    let paramIndex = 1
 
     if (data.email !== undefined) {
-      setParts.push('email = ?')
+      setParts.push(`email = $${paramIndex++}`)
       params.push(data.email)
     }
     if (data.name !== undefined) {
-      setParts.push('name = ?')
+      setParts.push(`name = $${paramIndex++}`)
       params.push(data.name)
     }
-    setParts.push('updated_at = CURRENT_TIMESTAMP')
+    setParts.push(`updated_at = CURRENT_TIMESTAMP`)
 
-    query += setParts.join(', ') + ' WHERE id = ?'
     params.push(where.id)
-
-    await sql.unsafe(query, params)
-    const { rows } = await sql`SELECT * FROM users WHERE id = ${where.id}`
+    const query = `UPDATE users SET ${setParts.join(', ')} WHERE id = $${paramIndex}`
+    await pool.query(query, params)
+    const { rows } = await pool.query('SELECT * FROM users WHERE id = $1', [where.id])
     return transformUser(rows[0])
   },
 
   delete: async (where: { id: string }) => {
-    await sql`DELETE FROM users WHERE id = ${where.id}`
+    await pool.query('DELETE FROM users WHERE id = $1', [where.id])
     return { id: where.id }
   }
 }
@@ -101,54 +89,62 @@ export const userDb = {
 export const postDb = {
   findMany: async (options?: { orderBy?: { createdAt?: 'asc' | 'desc' } }) => {
     const order = options?.orderBy?.createdAt === 'asc' ? 'ASC' : 'DESC'
-    const { rows } = await sql`SELECT * FROM posts ORDER BY created_at ${order}`
+    const { rows } = await pool.query(`SELECT * FROM posts ORDER BY created_at ${order}`)
     return rows.map(transformPost)
   },
 
-  findUnique: async (where: { id: string }) => {
-    const { rows } = await sql`SELECT * FROM posts WHERE id = ${where.id}`
-    return transformPost(rows[0])
+  findUnique: async (where: { id?: string; slug?: string }) => {
+    if (where.id) {
+      const { rows } = await pool.query('SELECT * FROM posts WHERE id = $1', [where.id])
+      return transformPost(rows[0])
+    }
+    if (where.slug) {
+      const { rows } = await pool.query('SELECT * FROM posts WHERE slug = $1', [where.slug])
+      return transformPost(rows[0])
+    }
+    return null
   },
 
-  create: async (data: { title: string; excerpt: string; content: string; category?: string }) => {
+  create: async (data: { title: string; excerpt: string; content: string; category?: string; slug: string }) => {
     const id = uuidv4()
     const category = data.category || 'Politics'
-    await sql`INSERT INTO posts (id, title, excerpt, content, category) VALUES (${id}, ${data.title}, ${data.excerpt}, ${data.content}, ${category})`
-    const { rows } = await sql`SELECT * FROM posts WHERE id = ${id}`
+    await pool.query('INSERT INTO posts (id, title, excerpt, content, category, slug) VALUES ($1, $2, $3, $4, $5, $6)', [id, data.title, data.excerpt, data.content, category, data.slug])
+    const { rows } = await pool.query('SELECT * FROM posts WHERE id = $1', [id])
     return transformPost(rows[0])
   },
 
   update: async (where: { id: string }, data: { title?: string; excerpt?: string; content?: string; category?: string }) => {
     const setParts: string[] = []
     const params: any[] = []
+    let paramIndex = 1
 
     if (data.title !== undefined) {
-      setParts.push('title = ?')
+      setParts.push(`title = $${paramIndex++}`)
       params.push(data.title)
     }
     if (data.excerpt !== undefined) {
-      setParts.push('excerpt = ?')
+      setParts.push(`excerpt = $${paramIndex++}`)
       params.push(data.excerpt)
     }
     if (data.content !== undefined) {
-      setParts.push('content = ?')
+      setParts.push(`content = $${paramIndex++}`)
       params.push(data.content)
     }
     if (data.category !== undefined) {
-      setParts.push('category = ?')
+      setParts.push(`category = $${paramIndex++}`)
       params.push(data.category)
     }
-    setParts.push('updated_at = CURRENT_TIMESTAMP')
-    params.push(where.id)
+    setParts.push(`updated_at = CURRENT_TIMESTAMP`)
 
-    const query = `UPDATE posts SET ${setParts.join(', ')} WHERE id = ?`
-    await sql.unsafe(query, params)
-    const { rows } = await sql`SELECT * FROM posts WHERE id = ${where.id}`
+    params.push(where.id)
+    const query = `UPDATE posts SET ${setParts.join(', ')} WHERE id = $${paramIndex}`
+    await pool.query(query, params)
+    const { rows } = await pool.query('SELECT * FROM posts WHERE id = $1', [where.id])
     return transformPost(rows[0])
   },
 
   delete: async (where: { id: string }) => {
-    await sql`DELETE FROM posts WHERE id = ${where.id}`
+    await pool.query('DELETE FROM posts WHERE id = $1', [where.id])
     return { id: where.id }
   }
 }
