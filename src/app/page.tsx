@@ -199,6 +199,12 @@ export default function Home() {
                   {category}
                 </button>
               ))}
+              <Link
+                href="/politics"
+                className="px-4 py-2 text-sm font-medium rounded transition-colors text-blue-400 hover:text-blue-300 hover:bg-blue-900/20"
+              >
+                Analysis
+              </Link>
             </nav>
 
             <div className="flex items-center space-x-4">
@@ -285,9 +291,24 @@ export default function Home() {
                 </div>
               ) : filteredPosts.length === 0 ? (
                 <div className="text-gray-600 py-12">
+                  {selectedCategory === 'Politics' && (
+                     <div className="mb-8 p-8 border border-gray-800 rounded-lg bg-[#0f0f0f] text-center">
+                        <h3 className="text-xl font-bold text-white mb-2">Looking for Political Analysis?</h3>
+                        <p className="text-gray-400 mb-6 max-w-lg mx-auto">
+                          Check out my specialized tools for fact-checking, policy tracking, and historical timelines.
+                        </p>
+                        <Link
+                          href="/politics"
+                          className="inline-block px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full font-medium transition-colors"
+                        >
+                          Open Political Toolbox
+                        </Link>
+                     </div>
+                  )}
+
                   {searchQuery || selectedCategory !== 'All' ? (
                     <div>
-                      <p>No articles found matching your criteria.</p>
+                      {selectedCategory !== 'Politics' && <p>No articles found matching your criteria.</p>}
                       <button
                         onClick={() => {
                           setSearchQuery('')
@@ -351,6 +372,28 @@ export default function Home() {
 
             <aside className="lg:col-span-4">
               <div className="lg:sticky lg:top-24 space-y-6">
+                {/* Political Toolbox Promo */}
+                <div className="bg-gradient-to-br from-blue-900/10 to-purple-900/10 border border-blue-500/20 p-6 rounded-lg">
+                  <h3 className="text-blue-400 text-sm font-semibold uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Political Toolbox
+                  </h3>
+                  <p className="text-gray-400 text-sm mb-4">
+                    Explore my specialized tools for analyzing policies, verifying claims, and tracking events.
+                  </p>
+                  <Link
+                    href="/politics"
+                    className="text-sm font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1 group"
+                  >
+                    Open Dashboard
+                    <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    </svg>
+                  </Link>
+                </div>
+
                 {posts.length > 1 && (
                   <div className="bg-[#0a0a0a] border border-gray-800/50 p-6 rounded-lg">
                     <h3 className="text-white text-sm font-semibold uppercase tracking-wider mb-4">
