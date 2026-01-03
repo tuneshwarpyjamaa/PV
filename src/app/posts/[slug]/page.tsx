@@ -5,6 +5,7 @@ import TableOfContents from '@/components/TableOfContents'
 import QuoteToShare from '@/components/QuoteToShare'
 import GiscusComments from '@/components/GiscusComments'
 import ShareToTwitter from '@/components/ShareToTwitter'
+import { db } from '@/lib/db'
 
 // Force dynamic rendering to ensure fresh data
 export const dynamic = 'force-dynamic'
@@ -22,21 +23,18 @@ interface Post {
 
 async function getPost(slug: string): Promise<Post | null> {
     try {
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}`
-            : 'http://localhost:3000'
-
-        const res = await fetch(`${baseUrl}/api/posts/${slug}`, {
-            cache: 'no-store',
-            next: { revalidate: 0 }
+        // Try to find by id first
+        let post = await db.post.findUnique({
+            id: slug
         })
 
-        if (res.ok) {
-            return await res.json()
+        // If not found by id, try by slug
+        if (!post) {
+            post = await db.post.findUnique({
+                slug: slug
+            })
         }
-
-        console.error(`Failed to fetch post ${slug}: ${res.status} ${res.statusText}`)
-        return null
+        return post
     } catch (error) {
         console.error('Failed to fetch post:', error)
         return null
@@ -46,21 +44,7 @@ async function getPost(slug: string): Promise<Post | null> {
 // Generate static params for all posts at build time
 export async function generateStaticParams() {
     try {
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}`
-            : 'http://localhost:3000'
-
-        const res = await fetch(`${baseUrl}/api/posts`, {
-            cache: 'no-store'
-        })
-
-        if (!res.ok) {
-            console.error('Failed to fetch posts for static params')
-            return []
-        }
-
-        const posts: Post[] = await res.json()
-
+        const posts = await db.post.findMany()
         return posts.map((post) => ({
             slug: post.slug || post.id,
         }))
@@ -344,14 +328,8 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
 
 async function getOtherPosts(excludeId: string): Promise<Post[]> {
     try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/posts`, {
-            cache: 'no-store'
-        })
-        if (res.ok) {
-            const posts: Post[] = await res.json()
-            return posts.filter(p => p.id !== excludeId).slice(0, 3)
-        }
-        return []
+        const posts = await db.post.findMany({ orderBy: { createdAt: 'desc' } })
+        return posts.filter(p => p.id !== excludeId).slice(0, 3)
     } catch (error) {
         console.error('Failed to fetch other posts:', error)
         return []
